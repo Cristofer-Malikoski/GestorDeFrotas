@@ -12,7 +12,11 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import { buildFixtures } from '@/data/mock/fixtures'
+import { summarizeMonths } from '@/domain/reports'
+import { addMonths, currentMonth, lastMonths, todayISO } from '@/lib/dates'
+import { formatCostPerKm, formatMoney, formatMonth, formatMonthShort } from '@/lib/format'
 import { Logo } from '@/components/brand/Logo'
 import { Photo } from '@/components/brand/Photo'
 import { Button } from '@/components/ui/button'
@@ -307,42 +311,57 @@ export function LandingPage() {
   )
 }
 
-/** Composição com a própria interface (dados sintéticos) — comunica gestão melhor que foto genérica. */
+/**
+ * Composição com a própria interface. Os números vêm das MESMAS fixtures e fórmulas
+ * da demonstração (último mês fechado, frota toda) — nada digitado à mão.
+ */
 function ProductPreview() {
-  const bars = [62, 70, 66, 74, 58, 71, 34, 69, 77, 72, 75, 48]
-  const costs = [55, 58, 57, 60, 52, 59, 61, 57, 61, 60, 62, 40]
+  const { kpis, series, lossMonths, month } = useMemo(() => {
+    const s = buildFixtures(todayISO())
+    const data = { trips: s.trips, fuel: s.fuel, expenses: s.expenses, categories: s.categories }
+    const last = addMonths(currentMonth(), -1)
+    const series = summarizeMonths(data, lastMonths(last, 12))
+    const cur = series[series.length - 1]
+    return {
+      month: last,
+      series,
+      lossMonths: series.filter((m) => m.result < 0).map((m) => formatMonthShort(m.month)),
+      kpis: [
+        ['Faturamento', formatMoney(cur.revenue), ''],
+        ['Despesas', formatMoney(cur.totalCosts), ''],
+        ['Resultado', `${cur.result < 0 ? '−' : '+'} ${formatMoney(Math.abs(cur.result))}`, cur.result < 0 ? 'text-bad-700' : 'text-go-800'],
+        ['Custo por km', cur.costPerKm ? formatCostPerKm(cur.costPerKm) : '—', ''],
+      ],
+    }
+  }, [])
+  const max = Math.max(...series.flatMap((m) => [m.revenue, m.totalCosts]), 1)
   return (
-    <div className="rounded-2xl bg-canvas p-5 text-ink shadow-[var(--shadow-pop)]" aria-label="Exemplo do painel do gestor com dados sintéticos" role="img">
-      <div className="flex items-center justify-between">
-        <p className="font-display font-bold">Resultado do mês</p>
+    <div className="rounded-2xl bg-canvas p-5 text-ink shadow-[var(--shadow-pop)]" role="img" aria-label={`Exemplo do painel do gestor com dados sintéticos de ${formatMonth(month)}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-display font-bold">Resultado de {formatMonth(month)}</p>
         <span className="rounded-full bg-sunken px-2.5 py-0.5 text-xs text-ink-3">dados sintéticos</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ['Faturamento', 'R$ 58.420'],
-          ['Despesas', 'R$ 47.910'],
-          ['Resultado', '+ R$ 10.510'],
-          ['Custo por km', 'R$ 4,86'],
-        ].map(([l, v]) => (
+        {kpis.map(([l, v, tone]) => (
           <div key={l} className="rounded-lg bg-surface p-3 shadow-[var(--shadow-card)]">
             <p className="text-xs text-ink-3">{l}</p>
-            <p className={`font-kpi mt-1 text-lg font-extrabold ${l === 'Resultado' ? 'text-go-800' : ''}`}>{v}</p>
+            <p className={`font-kpi mt-1 text-base font-extrabold xl:text-lg ${tone}`}>{v}</p>
           </div>
         ))}
       </div>
       <div className="mt-4 rounded-lg bg-surface p-4 shadow-[var(--shadow-card)]">
         <div className="flex h-32 items-end gap-1.5">
-          {bars.map((b, i) => (
-            <div key={i} className="flex flex-1 items-end gap-0.5">
-              <div className="flex-1 rounded-t-sm bg-chart-revenue" style={{ height: `${b}%` }} />
-              <div className="flex-1 rounded-t-sm bg-chart-cost" style={{ height: `${costs[i]}%` }} />
+          {series.map((m) => (
+            <div key={m.month} className="flex h-full flex-1 items-end gap-0.5">
+              <div className="flex-1 rounded-t-sm bg-chart-revenue" style={{ height: `${(m.revenue / max) * 100}%` }} />
+              <div className="flex-1 rounded-t-sm bg-chart-cost" style={{ height: `${(m.totalCosts / max) * 100}%` }} />
             </div>
           ))}
         </div>
-        <div className="mt-3 flex gap-4 text-xs text-ink-3">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-3">
           <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-revenue" />Faturamento</span>
           <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-cost" />Despesas</span>
-          <span className="ml-auto">jul: mês com prejuízo (despesa maior que faturamento)</span>
+          {lossMonths.length > 0 && <span className="ml-auto">Prejuízo em {lossMonths.join(', ')} (despesa maior que faturamento)</span>}
         </div>
       </div>
     </div>

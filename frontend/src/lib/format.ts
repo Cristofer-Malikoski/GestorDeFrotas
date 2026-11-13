@@ -19,6 +19,8 @@ export const formatKmPerLiter = (v: number) => `${dec2.format(v)} km/L`
 export const formatCostPerKm = (v: number) => `${brl.format(v)}/km`
 export const formatPercent = (v: number) => pct.format(v)
 export const formatInt = (v: number) => int.format(v)
+/** Valor em reais sem centavos e sem símbolo, para tabelas largas (ex.: 99.550). */
+export const formatWhole = (v: number) => int.format(Math.round(v))
 export const formatDecimal = (v: number, digits = 2) =>
   new Intl.NumberFormat('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v)
 

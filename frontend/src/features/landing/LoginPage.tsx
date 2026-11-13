@@ -7,6 +7,8 @@ import { useSession } from '@/auth/session'
 import { DEMO_USERS } from '@/data/mock/fixtures'
 import type { Role } from '@/domain/types'
 import { cn } from '@/lib/cn'
+import { isDemo } from '@/config'
+import { ApiLoginForm } from './ApiLoginForm'
 
 export function LoginPage() {
   const { signIn } = useSession()
@@ -26,32 +28,42 @@ export function LoginPage() {
           <Logo className="h-8" />
         </Link>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-12">
-          <h1 className="font-display text-3xl font-extrabold">Como você quer entrar?</h1>
-          <p className="mt-2 text-ink-2">
-            Escolha um perfil para explorar. Cada um vê só o que precisa — o motorista não vê valores de frete nem resultado.
-          </p>
-          <div className="mt-8 space-y-3">
-            <ProfileButton
-              highlighted={suggested === 'gestor'}
-              icon={<BarChart3 />}
-              title="Gestor"
-              who={DEMO_USERS.gestor.name}
-              detail="Painel, conferência de lançamentos, viagens, fretes e fechamento do mês."
-              onClick={() => enter('gestor')}
-            />
-            <ProfileButton
-              highlighted={suggested === 'motorista'}
-              icon={<Truck />}
-              title="Motorista"
-              who={`${DEMO_USERS.motorista.name} · caminhão DMO1A23`}
-              detail="Registrar abastecimento, despesa e viagem; acompanhar os próprios lançamentos."
-              onClick={() => enter('motorista')}
-            />
-          </div>
-          <p className="mt-8 rounded-lg bg-canvas px-4 py-3 text-sm text-ink-3">
-            <strong className="font-semibold text-ink-2">Entrada demonstrativa, sem senha.</strong> O login real (com usuário e
-            permissões por perfil) depende do servidor, ainda em desenvolvimento.
-          </p>
+          {isDemo ? (
+            <>
+            <h1 className="font-display text-3xl font-extrabold">Como você quer entrar?</h1>
+            <p className="mt-2 text-ink-2">
+              Escolha um perfil para explorar. Cada um vê só o que precisa — o motorista não vê valores de frete nem resultado.
+            </p>
+            <div className="mt-8 space-y-3">
+              <ProfileButton
+                highlighted={suggested === 'gestor'}
+                icon={<BarChart3 />}
+                title="Gestor"
+                who={DEMO_USERS.gestor.name}
+                detail="Painel, conferência de lançamentos, viagens, fretes e fechamento do mês."
+                onClick={() => enter('gestor')}
+              />
+              <ProfileButton
+                highlighted={suggested === 'motorista'}
+                icon={<Truck />}
+                title="Motorista"
+                who={`${DEMO_USERS.motorista.name} · caminhão DMO1A23`}
+                detail="Registrar abastecimento, despesa e viagem; acompanhar os próprios lançamentos."
+                onClick={() => enter('motorista')}
+              />
+            </div>
+            <p className="mt-8 rounded-lg bg-canvas px-4 py-3 text-sm text-ink-3">
+              <strong className="font-semibold text-ink-2">Entrada demonstrativa, sem senha.</strong> Com a API real (VITE_DATA_SOURCE=api) esta tela pede
+              e-mail e senha.
+            </p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-3xl font-extrabold">Entrar no Fretuno</h1>
+              <p className="mt-2 text-ink-2">Use o e-mail e a senha cadastrados pela sua empresa.</p>
+              <ApiLoginForm />
+            </>
+          )}
         </div>
       </main>
       <div className="relative hidden lg:block">

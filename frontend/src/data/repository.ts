@@ -29,8 +29,13 @@ export interface UploadDocumentInput {
   kind: DocumentKind
   vehicleId: string
   fileName: string
-  /** Na demonstração usamos um comprovante de exemplo em vez de ler o arquivo. */
+  /**
+   * true = pedir leitura do documento. No mock, devolve um comprovante de EXEMPLO (simulado);
+   * na API, envia o arquivo e pede a extração ao servidor.
+   */
   useSample: boolean
+  /** Arquivo escolhido pelo usuário (obrigatório na API; o mock não lê arquivos). */
+  file?: File
 }
 
 /**

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { MapPin } from 'lucide-react'
+import { MapPin, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { LoadingBlock } from '@/components/ui/feedback'
@@ -44,6 +44,7 @@ function StartTrip() {
   const navigate = useNavigate()
   const start = useStartTrip()
   const lastDestination = d.trips.find((t) => t.status === 'concluida')?.destination ?? ''
+  const [showDate, setShowDate] = useState(false)
   const form = useForm<z.infer<typeof startSchema>>({
     resolver: zodResolver(startSchema),
     defaultValues: {
@@ -83,9 +84,18 @@ function StartTrip() {
         <Field label="Km na saída" error={e.startKm?.message} hint="Último km registrado do caminhão.">
           {(p) => <Input {...p} {...register('startKm')} inputMode="numeric" suffix="km" />}
         </Field>
-        <Field label="Data de saída" error={e.startDate?.message}>
-          {(p) => <Input {...p} type="date" {...register('startDate')} />}
-        </Field>
+        {showDate ? (
+          <Field label="Data de saída" error={e.startDate?.message}>
+            {(p) => <Input {...p} type="date" {...register('startDate')} />}
+          </Field>
+        ) : (
+          <div className="flex flex-col justify-end pb-2 text-sm text-ink-2">
+            <span>Saída hoje, {formatDate(form.watch('startDate'))}</span>
+            <Button variant="link" size="sm" className="self-start" onClick={() => setShowDate(true)}>
+              <Pencil className="size-3.5" /> Alterar data
+            </Button>
+          </div>
+        )}
       </div>
       <datalist id="cidades">
         {ctx.recentDestinations.map((c) => (
@@ -171,7 +181,7 @@ function ActiveTrip({ trip }: { trip: Trip }) {
             onChange={(e) => setKm(e.target.value)}
             inputMode="numeric"
             suffix="km"
-            className="max-w-xs"
+            containerClassName="max-w-xs"
             autoFocus
           />
         )}

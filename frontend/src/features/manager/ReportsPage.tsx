@@ -14,6 +14,7 @@ import { currentMonth, lastMonths } from '@/lib/dates'
 import {
   formatCostPerKm,
   formatDate,
+  formatInt,
   formatKm,
   formatKmPerLiter,
   formatLiters,
@@ -21,6 +22,7 @@ import {
   formatMonth,
   formatMonthShort,
   formatMonthTitle,
+  formatWhole,
 } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { ResultValue } from '@/features/shared/status'
@@ -212,12 +214,13 @@ function AnnualSummary({ data, month, vehicleId, plate }: { data: Data; month: s
   const groupValue = (m: MonthSummary, g: string) => m.costLines.filter((l) => l.group === g).reduce((s, l) => s + l.value, 0)
   const groupsPresent = GROUP_ORDER.filter((g) => series.some((m) => groupValue(m, g) > 0))
 
+  const empty = (m: MonthSummary) => m.revenue === 0 && m.totalCosts === 0 && m.km === 0
   const rows: { label: string; get: (m: MonthSummary) => number; total: number; strong?: boolean; result?: boolean; fmt?: (n: number) => string }[] = [
     { label: 'Faturamento', get: (m) => m.revenue, total: t.revenue, strong: true },
     ...groupsPresent.map((g) => ({ label: GROUP_LABEL[g], get: (m: MonthSummary) => groupValue(m, g), total: series.reduce((s, m) => s + groupValue(m, g), 0) })),
     { label: 'Total de despesas', get: (m) => m.totalCosts, total: t.totalCosts, strong: true },
     { label: 'Resultado', get: (m) => m.result, total: t.result, strong: true, result: true },
-    { label: 'Km rodados', get: (m) => m.km, total: t.km, fmt: (n) => formatKm(n) },
+    { label: 'Km rodados', get: (m) => m.km, total: t.km, fmt: (n) => formatInt(n) },
   ]
 
   function exportCSV() {
@@ -236,7 +239,9 @@ function AnnualSummary({ data, month, vehicleId, plate }: { data: Data; month: s
           <h2 className="font-display text-xl font-extrabold">
             {formatMonthTitle(months[0])} a {formatMonth(months[months.length - 1])}
           </h2>
-          <p className="text-sm text-ink-3">Mesma leitura do resumo anual da planilha: um mês por coluna.</p>
+          <p className="text-sm text-ink-3">
+            Mesma leitura do resumo anual da planilha: um mês por coluna. Valores em R$ arredondados; o CSV traz os centavos.
+          </p>
         </div>
         <div className="no-print flex gap-2">
           <Button onClick={exportCSV}>
@@ -253,11 +258,11 @@ function AnnualSummary({ data, month, vehicleId, plate }: { data: Data; month: s
             <tr>
               <Th className="sticky left-0 z-10">Item</Th>
               {months.map((m) => (
-                <Th key={m} numeric className={cn(m === month && 'bg-navy-100 text-ink')}>
+                <Th key={m} numeric className={cn('px-2', m === month && 'bg-navy-100 text-ink')}>
                   {formatMonthShort(m)}
                 </Th>
               ))}
-              <Th numeric>Total</Th>
+              <Th numeric className="px-2">Total</Th>
             </tr>
           </thead>
           <tbody>
@@ -267,20 +272,20 @@ function AnnualSummary({ data, month, vehicleId, plate }: { data: Data; month: s
                 {series.map((m) => {
                   const v = r.get(m)
                   return (
-                    <Td key={m.month} numeric className={cn(r.strong && 'font-semibold', m.month === month && 'bg-navy-50')}>
-                      {r.result ? <ResultValue value={v} /> : r.fmt ? r.fmt(v) : v ? formatMoney(v) : '—'}
+                    <Td key={m.month} numeric className={cn('px-2', r.strong && 'font-semibold', m.month === month && 'bg-navy-50')}>
+                      {empty(m) ? '—' : r.result ? <ResultValue value={v} whole /> : r.fmt ? r.fmt(v) : v ? formatWhole(v) : '—'}
                     </Td>
                   )
                 })}
-                <Td numeric className="font-semibold">
-                  {r.result ? <ResultValue value={r.total} /> : r.fmt ? r.fmt(r.total) : formatMoney(r.total)}
+                <Td numeric className="px-2 font-semibold">
+                  {r.result ? <ResultValue value={r.total} whole /> : r.fmt ? r.fmt(r.total) : formatWhole(r.total)}
                 </Td>
               </Tr>
             ))}
           </tbody>
         </Table>
       </TableWrap>
-      <p className="px-6 py-3 text-sm text-ink-3">Valores negativos (−) indicam prejuízo no mês.</p>
+      <p className="px-6 py-3 text-sm text-ink-3">Valores negativos (−) indicam prejuízo no mês. “—” = mês sem lançamentos.</p>
     </Card>
   )
 }

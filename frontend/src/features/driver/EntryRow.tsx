@@ -27,7 +27,8 @@ export function EntryRow({ entry, categories, action }: { entry: Entry; categori
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-ink-3">
           <span>
-            {formatRelativeDay(entry.date, todayISO())} às {entry.date.slice(11, 16)}
+            {formatRelativeDay(entry.date, todayISO())}
+            {entry.date.length > 10 && ` às ${entry.date.slice(11, 16)}`}
             {entry.kind === 'abastecimento' && ` · ${formatLiters(entry.liters)}`}
           </span>
           <StatusBadge status={entry.status} short />

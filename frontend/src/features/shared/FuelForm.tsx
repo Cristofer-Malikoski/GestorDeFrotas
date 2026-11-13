@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { ChoiceGroup } from '@/components/ui/choice'
 import { Field, Input, Select } from '@/components/ui/field'
+import { useRepository } from '@/data/RepositoryProvider'
 import { useCreateFuel, useDeleteEntry, useUploadDocument, useVehicles } from '@/data/queries'
 import { FUEL_TYPE_LABEL, ISSUE_LABEL } from '@/domain/labels'
 import { PRICE_DEVIATION } from '@/domain/rules'
@@ -62,6 +63,7 @@ export function FuelForm({
   onCancel: () => void
 }) {
   const vehicles = useVehicles()
+  const isMock = useRepository().kind === 'mock'
   const [method, setMethod] = useState<Method>('digitar')
   const [doc, setDoc] = useState<DocumentFile | null>(null)
   const [localImage, setLocalImage] = useState<string>()
@@ -135,10 +137,15 @@ export function FuelForm({
       vehicleId,
       fileName: file?.name ?? 'comprovante-exemplo.jpg',
       useSample,
+      file: file ?? undefined,
     })
     setDoc(d)
     if (useSample && d.extraction) {
       setLocalImage(undefined)
+      // A data/hora do cupom substitui "agora": não pedir de novo o que o documento já diz.
+      if (d.synthetic?.date && d.extraction.fields.some((f) => f.key === 'date')) {
+        setValue('date', d.synthetic.date.slice(0, 16), { shouldValidate: true })
+      }
       for (const f of d.extraction.fields) {
         if (f.key === 'station') setValue('station', f.value, { shouldValidate: true })
         if (f.key === 'liters') setValue('liters', f.value, { shouldValidate: true })
@@ -242,14 +249,20 @@ export function FuelForm({
       {method === 'comprovante' && !doc && (
         <div className="rounded-lg border-2 border-dashed border-line-strong bg-surface p-5">
           <p className="font-semibold">Envie a foto do cupom do posto</p>
-          <p className="mt-1 text-sm text-ink-3">
-            <strong className="font-semibold text-amber-700">Demonstração:</strong> nenhuma leitura real é feita. Para ver como
-            funciona, usamos um comprovante de exemplo — inclusive com um campo difícil de ler.
-          </p>
+          {isMock ? (
+            <p className="mt-1 text-sm text-ink-3">
+              <strong className="font-semibold text-amber-700">Demonstração:</strong> nenhuma leitura real é feita. Para ver como
+              funciona, usamos um comprovante de exemplo — inclusive com um campo difícil de ler.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-ink-3">Lemos o cupom e preenchemos os campos para você conferir antes de salvar.</p>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="dark" onClick={() => attach(null, true)} loading={upload.isPending}>
-              <ScanText /> Usar comprovante de exemplo
-            </Button>
+            {isMock && (
+              <Button variant="dark" onClick={() => attach(null, true)} loading={upload.isPending}>
+                <ScanText /> Usar comprovante de exemplo
+              </Button>
+            )}
             <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-line-strong bg-surface px-4 text-[15px] font-semibold hover:bg-sunken has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-info-600">
               <Paperclip className="size-4" aria-hidden />
               Escolher arquivo
@@ -276,15 +289,21 @@ export function FuelForm({
 
         <div className="space-y-5">
           {doc?.extraction && (
-            <Callout tone="warn" title="Leitura simulada — confira antes de salvar">
-              Os valores abaixo são de um <strong>comprovante de exemplo</strong>, não da sua imagem.
+            <Callout tone="warn" title={doc.extraction.simulated ? 'Leitura simulada — confira antes de salvar' : 'Leitura automática — confira antes de salvar'}>
+              {doc.extraction.simulated ? (
+                <>
+                  Os valores abaixo são de um <strong>comprovante de exemplo</strong>, não da sua imagem.
+                </>
+              ) : (
+                <>Os valores abaixo foram lidos do documento e podem ter erros.</>
+              )}
               {uncertainFields.length > 0 && (
                 <> Campos destacados ficaram com leitura incerta: {uncertainFields.map((f) => f.label.toLowerCase()).join(', ')}.</>
               )}
             </Callout>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={cn('grid gap-4', !(doc && method === 'comprovante') && 'sm:grid-cols-2')}>
             <Field
               label="Litros"
               error={errors.liters?.message}
@@ -314,7 +333,13 @@ export function FuelForm({
             >
               {(p) => <Input {...p} {...register('odometerKm')} inputMode="numeric" autoComplete="off" suffix="km" />}
             </Field>
-            <Field label="Posto" error={errors.station?.message} hint={ctx.lastFuel ? 'Preenchido com o último posto usado.' : undefined}>
+            <Field label="Posto" error={errors.station?.message} hint={
+                doc?.extraction
+                  ? 'Lido do comprovante.'
+                  : ctx.lastFuel && watch('station') === ctx.lastFuel.station
+                    ? 'Preenchido com o último posto usado.'
+                    : undefined
+              }>
               {(p) => (
                 <>
                   <Input {...p} {...register('station')} list={`${p.id}-list`} autoComplete="off" />

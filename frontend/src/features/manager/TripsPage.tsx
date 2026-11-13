@@ -14,7 +14,7 @@ import { Sheet } from '@/components/ui/sheet'
 import { Table, TableWrap, Td, Th, Tr } from '@/components/ui/table'
 import { useCreateTrip, useDrivers, useSetFreight, useTrips, useVehicles } from '@/data/queries'
 import { tripKm, tripRevenueMonth } from '@/domain/reports'
-import type { Trip } from '@/domain/types'
+import type { Freight, Trip } from '@/domain/types'
 import { todayISO } from '@/lib/dates'
 import { formatCostPerKm, formatDate, formatDecimal, formatKm, formatMoney, formatMonth } from '@/lib/format'
 import { parseDecimalBR, parseIntegerBR } from '@/lib/parse'
@@ -70,9 +70,8 @@ export function TripsPage() {
               <Table>
                 <thead>
                   <tr>
-                    <Th>Saída</Th>
+                    <Th>Viagem</Th>
                     <Th>Veículo</Th>
-                    <Th>Rota</Th>
                     <Th numeric>Km</Th>
                     <Th>Cliente / carga</Th>
                     <Th numeric>Frete</Th>
@@ -88,16 +87,21 @@ export function TripsPage() {
                     const km = tripKm(t)
                     return (
                       <Tr key={t.id}>
-                        <Td className="num whitespace-nowrap">{formatDate(t.startDate)}</Td>
-                        <Td>
+                        <Td className="min-w-52">
+                          <span className="block font-medium">
+                            {t.origin} → {t.destination}
+                          </span>
+                          <span className="num block text-xs text-ink-3">
+                            {formatDate(t.startDate)}
+                            {t.endDate && t.endDate !== t.startDate ? ` a ${formatDate(t.endDate)}` : ''}
+                          </span>
+                        </Td>
+                        <Td className="whitespace-nowrap">
                           <span className="font-medium">{plate(t.vehicleId)}</span>
                           <span className="block text-xs text-ink-3">{driver(t.driverId)}</span>
                         </Td>
-                        <Td className="min-w-48">
-                          {t.origin} → {t.destination}
-                        </Td>
                         <Td numeric>{km ? formatKm(km) : '—'}</Td>
-                        <Td className="max-w-56">
+                        <Td className="max-w-48">
                           {t.freight ? (
                             <>
                               <span className="block truncate">{t.freight.client}</span>
@@ -108,13 +112,15 @@ export function TripsPage() {
                           )}
                         </Td>
                         <Td numeric className="font-semibold">{t.freight ? formatMoney(t.freight.value) : '—'}</Td>
-                        <Td numeric>{t.freight && km ? formatCostPerKm(t.freight.value / km) : '—'}</Td>
+                        <Td numeric>
+                          {t.freight && km && t.status === 'concluida' ? formatCostPerKm(t.freight.value / km) : '—'}
+                        </Td>
                         <Td>
                           <TripStatusBadge status={t.status} />
                         </Td>
-                        <Td className="text-right">
+                        <Td className="text-right whitespace-nowrap">
                           <Button size="sm" variant={t.freight ? 'ghost' : 'dark'} onClick={() => setFreightTrip(t)}>
-                            {t.freight ? 'Editar frete' : 'Registrar frete'}
+                            {t.freight ? 'Editar' : 'Registrar frete'}
                           </Button>
                         </Td>
                       </Tr>
@@ -138,7 +144,13 @@ export function TripsPage() {
         </QueryState>
       </Card>
 
-      {freightTrip && <FreightSheet trip={freightTrip} clients={[...new Set((trips.data ?? []).map((t) => t.freight?.client).filter(Boolean) as string[])]} onClose={() => setFreightTrip(undefined)} />}
+      {freightTrip && (
+        <FreightSheet
+          trip={freightTrip}
+          history={(trips.data ?? []).filter((t) => t.freight).map((t) => t.freight!)}
+          onClose={() => setFreightTrip(undefined)}
+        />
+      )}
       {creating && <NewTripSheet onClose={() => setCreating(false)} />}
     </div>
   )
@@ -150,7 +162,8 @@ const freightSchema = z.object({
   value: z.string().refine((v) => parseDecimalBR(v) > 0, 'Informe o valor do frete. Exemplo: 6.200,00'),
 })
 
-function FreightSheet({ trip, clients, onClose }: { trip: Trip; clients: string[]; onClose: () => void }) {
+function FreightSheet({ trip, history, onClose }: { trip: Trip; history: Freight[]; onClose: () => void }) {
+  const clients = [...new Set(history.map((f) => f.client))]
   const save = useSetFreight()
   const form = useForm<z.infer<typeof freightSchema>>({
     resolver: zodResolver(freightSchema),
@@ -188,7 +201,19 @@ function FreightSheet({ trip, clients, onClose }: { trip: Trip; clients: string[
         <Field label="Cliente" error={e.client?.message}>
           {(p) => (
             <>
-              <Input {...p} {...form.register('client')} list="clientes" autoComplete="off" autoFocus />
+              <Input
+                {...p}
+                {...form.register('client', {
+                  // Reaproveita a carga do último frete desse cliente.
+                  onChange: (ev) => {
+                    const last = history.find((f) => f.client === ev.target.value)
+                    if (last && !form.getValues('cargo')) form.setValue('cargo', last.cargo)
+                  },
+                })}
+                list="clientes"
+                autoComplete="off"
+                autoFocus
+              />
               <datalist id="clientes">
                 {clients.map((c) => (
                   <option key={c} value={c} />
@@ -200,7 +225,17 @@ function FreightSheet({ trip, clients, onClose }: { trip: Trip; clients: string[
         <Field label="Carga" error={e.cargo?.message}>
           {(p) => <Input {...p} {...form.register('cargo')} />}
         </Field>
-        <Field label="Valor do frete" error={e.value?.message} hint={value > 0 && km ? `${formatCostPerKm(value / km)} rodado` : undefined}>
+        <Field
+          label="Valor do frete"
+          error={e.value?.message}
+          hint={
+            value > 0 && km && trip.status === 'concluida'
+              ? `${formatCostPerKm(value / km)} rodado`
+              : trip.status === 'em_andamento'
+                ? 'Viagem em andamento: o frete entra no faturamento do mês em que ela terminar.'
+                : undefined
+          }
+        >
           {(p) => <Input {...p} {...form.register('value')} inputMode="decimal" suffix="R$" />}
         </Field>
         <button type="submit" className="sr-only">
@@ -226,6 +261,7 @@ const tripSchema = z.object({
 
 function NewTripSheet({ onClose }: { onClose: () => void }) {
   const vehicles = useVehicles()
+  const trips = useTrips()
   const create = useCreateTrip()
   const form = useForm<z.infer<typeof tripSchema>>({
     resolver: zodResolver(tripSchema),
@@ -276,14 +312,16 @@ function NewTripSheet({ onClose }: { onClose: () => void }) {
       }
     >
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <Field label="Veículo" error={e.vehicleId?.message} hint={vehicle ? `Motorista vinculado e km atual preenchidos.` : undefined}>
+        <Field label="Veículo" error={e.vehicleId?.message} hint={vehicle ? 'Motorista vinculado, km atual e origem (último destino) preenchidos.' : undefined}>
           {(p) => (
             <Select
               {...p}
               {...register('vehicleId', {
                 onChange: (ev) => {
                   const v = vehicles.data?.find((x) => x.id === ev.target.value)
-                  if (v) setValue('startKm', String(v.odometerKm))
+                  if (v) setValue('startKm', v.odometerKm ? String(v.odometerKm) : '')
+                  const last = trips.data?.find((t) => t.vehicleId === ev.target.value && t.status === 'concluida')
+                  if (last && !form.getValues('origin')) setValue('origin', last.destination)
                 },
               })}
             >

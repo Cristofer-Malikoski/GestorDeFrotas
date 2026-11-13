@@ -65,9 +65,10 @@ export function DriverHome() {
                 <p className="text-sm text-ink-3">Seu caminhão</p>
                 <p className="mt-1 font-display text-2xl font-extrabold">{d.vehicle.plate}</p>
                 <p className="text-ink-2">
-                  {d.vehicle.model} · {d.vehicle.year}
+                  {d.vehicle.model}
+                  {d.vehicle.year ? ` · ${d.vehicle.year}` : ''}
                 </p>
-                <p className="num mt-2 text-sm text-ink-3">Hodômetro: {formatKm(d.vehicle.odometerKm)}</p>
+                <p className="num mt-2 text-sm text-ink-3">Hodômetro: {d.vehicle.odometerKm ? formatKm(d.vehicle.odometerKm) : 'não informado'}</p>
               </div>
               <div className="p-5">
                 <p className="text-sm text-ink-3">Viagem atual</p>

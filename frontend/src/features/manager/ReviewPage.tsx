@@ -18,6 +18,9 @@ import { CategoryIcon } from '@/features/shared/categoryIcons'
 import { DocumentPreview } from '@/features/shared/DocumentPreview'
 import { IssueTags, StatusBadge } from '@/features/shared/status'
 
+/** Compara valores digitados com tolerância de arredondamento (centavos/centésimos de litro). */
+const differs = (a: number, b: number) => Math.abs(a - b) > 0.005
+
 export function ReviewPage() {
   const queue = useReviewQueue()
   const [selectedId, setSelectedId] = useState<string>()
@@ -101,7 +104,7 @@ function QueueItem({ entry, active, onSelect }: { entry: Entry; active: boolean;
             {l.plate(entry.vehicleId)} · {formatDateTime(entry.date)}
           </span>
           {entry.resubmittedAt && <span className="mt-1 block text-sm font-medium text-info-700">Corrigido pelo motorista</span>}
-          <IssueTags issues={entry.issues} className="mt-1.5" />
+          <IssueTags issues={entry.issues} className="mt-1.5" inline />
         </span>
       </button>
     </li>
@@ -121,7 +124,7 @@ function ReviewDetail({ entry, onDone }: { entry: Entry; onDone: () => void }) {
 
   const [form, setForm] = useState(() =>
     entry.kind === 'abastecimento'
-      ? { liters: formatDecimal(entry.liters, 1), total: formatDecimal(entry.total), km: entry.odometerKm ? formatInt(entry.odometerKm) : '', description: '' }
+      ? { liters: formatDecimal(entry.liters, 2), total: formatDecimal(entry.total), km: entry.odometerKm ? formatInt(entry.odometerKm) : '', description: '' }
       : { liters: '', total: formatDecimal(entry.value), km: '', description: entry.description ?? '' },
   )
   const [checked, setChecked] = useState(false)
@@ -134,8 +137,8 @@ function ReviewDetail({ entry, onDone }: { entry: Entry; onDone: () => void }) {
   const liters = parseDecimalBR(form.liters)
   const changed =
     entry.kind === 'abastecimento'
-      ? total !== entry.total || liters !== entry.liters || (form.km ? parseIntegerBR(form.km) : undefined) !== entry.odometerKm
-      : total !== entry.value || (form.description || undefined) !== entry.description
+      ? differs(total, entry.total) || differs(liters, entry.liters) || (form.km ? parseIntegerBR(form.km) : undefined) !== entry.odometerKm
+      : differs(total, entry.value) || (form.description || undefined) !== entry.description
 
   async function decide(decision: ReviewDecision, message: string) {
     try {

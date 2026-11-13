@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { renderApp } from '@/test/renderApp'
 import { buildFixtures } from '@/data/mock/fixtures'
 import { todayISO } from '@/lib/dates'
+import { createMockRepository } from '@/data/mock/mockRepository'
 
 describe('Gestor', () => {
   it('painel mostra faturamento, despesas, resultado, custo por km e o que precisa de atenção', async () => {
@@ -24,7 +25,7 @@ describe('Gestor', () => {
 
   it('aprova leitura incerta só depois de confirmar que conferiu o documento', async () => {
     const { user, repository } = renderApp('/gestor/conferencia', 'gestor')
-    const item = await screen.findByRole('button', { name: /Auto Posto Trevo Norte/ })
+    const item = await screen.findByRole('button', { name: /Leitura incerta/ })
     await user.click(item)
     expect(screen.getByText('Comprovante sintético de demonstração', { exact: false })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^Aprovar$/ }))
@@ -33,8 +34,15 @@ describe('Gestor', () => {
     await user.click(screen.getByRole('button', { name: /^Aprovar$/ }))
     await waitFor(async () => {
       const queue = await repository.listReviewQueue()
-      expect(queue.some((e) => e.kind === 'abastecimento' && e.station === 'Auto Posto Trevo Norte' && e.issues.some((i) => i.code === 'leitura_incerta'))).toBe(false)
+      expect(queue.some((e) => e.issues.some((i) => i.code === 'leitura_incerta'))).toBe(false)
     })
+  })
+
+  it('fila vazia mostra estado útil', async () => {
+    const repository = createMockRepository({ latency: 0, persist: false })
+    for (const e of await repository.listReviewQueue()) await repository.review(e.id, { action: 'aprovar' })
+    renderApp('/gestor/conferencia', 'gestor', repository)
+    expect(await screen.findByText('Tudo conferido')).toBeInTheDocument()
   })
 
   it('devolver ao motorista exige motivo', async () => {

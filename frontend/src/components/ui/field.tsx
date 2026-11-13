@@ -55,12 +55,16 @@ export function Field({ label, hint, error, optional, className, children }: Fie
   )
 }
 
-type InputProps = InputHTMLAttributes<HTMLInputElement> & { suffix?: string }
+type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+  suffix?: string
+  /** Classes do contêiner (ex.: largura máxima) quando há sufixo. */
+  containerClassName?: string
+}
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, suffix, ...props }, ref) => {
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, suffix, containerClassName, ...props }, ref) => {
   if (!suffix) return <input ref={ref} className={cn(control, 'h-11', className)} {...props} />
   return (
-    <div className="relative">
+    <div className={cn('relative', containerClassName)}>
       <input ref={ref} className={cn(control, 'h-11 pr-14', className)} {...props} />
       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-ink-3" aria-hidden>
         {suffix}

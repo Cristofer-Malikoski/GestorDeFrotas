@@ -23,6 +23,7 @@ export function DriverEntriesPage() {
   const [params, setParams] = useSearchParams()
   const [kind, setKind] = useState<Kind>('todos')
   const [status, setStatus] = useState<StatusFilter>('todos')
+  const [visible, setVisible] = useState(20)
   const editingId = params.get('corrigir')
   const editing = d.entries.find((e) => e.id === editingId)
 
@@ -38,7 +39,10 @@ export function DriverEntriesPage() {
         <Pills
           label="Tipo"
           value={kind}
-          onChange={setKind}
+          onChange={(v) => {
+            setKind(v)
+            setVisible(20)
+          }}
           options={[
             ['todos', 'Todos'],
             ['abastecimento', 'Abastecimentos'],
@@ -48,7 +52,10 @@ export function DriverEntriesPage() {
         <Pills
           label="Estado"
           value={status}
-          onChange={setStatus}
+          onChange={(v) => {
+            setStatus(v)
+            setVisible(20)
+          }}
           options={[
             ['todos', 'Todos'],
             ['pendente', `Pendentes (${count('pendente')})`],
@@ -62,7 +69,7 @@ export function DriverEntriesPage() {
         <QueryState query={d}>
           {list.length ? (
             <ul className="divide-y divide-line">
-              {list.slice(0, 60).map((e) => (
+              {list.slice(0, visible).map((e) => (
                 <EntryRow
                   key={e.id}
                   entry={e}
@@ -80,7 +87,16 @@ export function DriverEntriesPage() {
           ) : (
             <EmptyState title="Nenhum lançamento com esse filtro">Mude o tipo ou o estado para ver outros lançamentos.</EmptyState>
           )}
-          {list.length > 60 && <p className="border-t border-line px-5 py-3 text-sm text-ink-3">Mostrando os 60 mais recentes.</p>}
+          {list.length > visible && (
+            <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 text-sm text-ink-3">
+              <span>
+                Mostrando {visible} de {list.length}
+              </span>
+              <Button size="sm" onClick={() => setVisible((v) => v + 20)}>
+                Mostrar mais
+              </Button>
+            </div>
+          )}
         </QueryState>
       </Card>
 
@@ -135,7 +151,7 @@ function CorrectionSheet({ entry, title, onClose }: { entry: Entry; title: strin
   const [fileName, setFileName] = useState<string>()
   const [values, setValues] = useState(() =>
     entry.kind === 'abastecimento'
-      ? { liters: formatDecimal(entry.liters, 1), total: formatDecimal(entry.total), km: entry.odometerKm ? formatInt(entry.odometerKm) : '', description: '' }
+      ? { liters: formatDecimal(entry.liters, 2), total: formatDecimal(entry.total), km: entry.odometerKm ? formatInt(entry.odometerKm) : '', description: '' }
       : { liters: '', total: formatDecimal(entry.value), km: '', description: entry.description ?? '' },
   )
   const [error, setError] = useState<string>()
@@ -217,7 +233,7 @@ function CorrectionSheet({ entry, title, onClose }: { entry: Entry; title: strin
                 onChange={async (e) => {
                   const f = e.target.files?.[0]
                   if (!f) return
-                  const d = await upload.mutateAsync({ kind: entry.kind === 'abastecimento' ? 'cupom_combustivel' : 'recibo', vehicleId: entry.vehicleId, fileName: f.name, useSample: false })
+                  const d = await upload.mutateAsync({ kind: entry.kind === 'abastecimento' ? 'cupom_combustivel' : 'recibo', vehicleId: entry.vehicleId, fileName: f.name, useSample: false, file: f })
                   setDocumentId(d.id)
                   setFileName(f.name)
                 }}

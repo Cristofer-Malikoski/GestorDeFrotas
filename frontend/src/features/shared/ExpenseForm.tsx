@@ -85,7 +85,7 @@ export function ExpenseForm({
       setError('vehicleId', { message: 'Escolha o veículo antes de anexar.' })
       return
     }
-    const d = await upload.mutateAsync({ kind: 'recibo', vehicleId, fileName: file?.name ?? 'recibo.jpg', useSample: false })
+    const d = await upload.mutateAsync({ kind: 'recibo', vehicleId, fileName: file?.name ?? 'recibo.jpg', useSample: false, file: file ?? undefined })
     setDoc(d)
   }
 

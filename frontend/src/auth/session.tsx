@@ -17,10 +17,14 @@ export interface Session {
 interface SessionContextValue {
   session: Session | null
   signIn: (role: Role) => Session
+  /** Sessão autenticada pela API real (perfil vindo de /auth/me). */
+  signInWith: (session: Session) => void
   signOut: () => void
 }
 
 const KEY = 'fretuno-demo-session'
+/** Token Bearer da API real (somente nesta aba). */
+export const TOKEN_KEY = 'fretuno-token'
 const SessionContext = createContext<SessionContextValue | null>(null)
 
 export function sessionFor(role: Role): Session {
@@ -50,15 +54,24 @@ export function SessionProvider({ children, initial }: { children: ReactNode; in
     }
     return s
   }, [])
-  const signOut = useCallback(() => {
-    setSession(null)
+  const signInWith = useCallback((s: Session) => {
+    setSession(s)
     try {
-      sessionStorage.removeItem(KEY)
+      sessionStorage.setItem(KEY, JSON.stringify(s))
     } catch {
       /* ignora */
     }
   }, [])
-  const value = useMemo(() => ({ session, signIn, signOut }), [session, signIn, signOut])
+  const signOut = useCallback(() => {
+    setSession(null)
+    try {
+      sessionStorage.removeItem(KEY)
+      sessionStorage.removeItem(TOKEN_KEY)
+    } catch {
+      /* ignora */
+    }
+  }, [])
+  const value = useMemo(() => ({ session, signIn, signInWith, signOut }), [session, signIn, signInWith, signOut])
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 

@@ -55,7 +55,8 @@ export function VehiclesPage() {
                 <div>
                   <p className="font-display text-2xl font-extrabold">{v.plate}</p>
                   <p className="text-ink-2">
-                    {v.model} · {v.year}
+                    {v.model}
+                    {v.year ? ` · ${v.year}` : ''}
                   </p>
                   <p className="text-sm text-ink-3">{v.description}</p>
                 </div>
@@ -64,7 +65,7 @@ export function VehiclesPage() {
               <dl className="num mt-4 grid grid-cols-3 gap-3 text-sm">
                 <div>
                   <dt className="text-ink-3">Hodômetro</dt>
-                  <dd className="font-semibold">{formatKm(v.odometerKm)}</dd>
+                  <dd className="font-semibold">{v.odometerKm ? formatKm(v.odometerKm) : '—'}</dd>
                 </div>
                 <div>
                   <dt className="text-ink-3">Motorista</dt>
