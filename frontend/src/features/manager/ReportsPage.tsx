@@ -253,31 +253,31 @@ function AnnualSummary({ data, month, vehicleId, plate }: { data: Data; month: s
         </div>
       </div>
       <TableWrap>
-        <Table className="text-[13px]">
+        <Table className="text-[12.5px]">
           <thead>
             <tr>
               <Th className="sticky left-0 z-10">Item</Th>
               {months.map((m) => (
-                <Th key={m} numeric className={cn('px-2', m === month && 'bg-navy-100 text-ink')}>
+                <Th key={m} numeric className={cn('px-1.5', m === month && 'bg-navy-100 text-ink')}>
                   {formatMonthShort(m)}
                 </Th>
               ))}
-              <Th numeric className="px-2">Total</Th>
+              <Th numeric className="px-1.5">Total</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <Tr key={r.label} className={cn(r.result && 'bg-canvas')}>
-                <Td className={cn('sticky left-0 z-10 bg-surface whitespace-nowrap', r.strong && 'font-semibold', r.result && 'bg-canvas')}>{r.label}</Td>
+                <Td className={cn('sticky left-0 z-10 w-32 bg-surface leading-tight', r.strong && 'font-semibold', r.result && 'bg-canvas')}>{r.label}</Td>
                 {series.map((m) => {
                   const v = r.get(m)
                   return (
-                    <Td key={m.month} numeric className={cn('px-2', r.strong && 'font-semibold', m.month === month && 'bg-navy-50')}>
+                    <Td key={m.month} numeric className={cn('px-1.5', r.strong && 'font-semibold', m.month === month && 'bg-navy-50')}>
                       {empty(m) ? '—' : r.result ? <ResultValue value={v} whole /> : r.fmt ? r.fmt(v) : v ? formatWhole(v) : '—'}
                     </Td>
                   )
                 })}
-                <Td numeric className="px-2 font-semibold">
+                <Td numeric className="px-1.5 font-semibold">
                   {r.result ? <ResultValue value={r.total} whole /> : r.fmt ? r.fmt(r.total) : formatWhole(r.total)}
                 </Td>
               </Tr>

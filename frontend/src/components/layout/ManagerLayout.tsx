@@ -51,11 +51,11 @@ export function ManagerLayout() {
   const queue = useReviewQueue()
   return (
     <ManagerFiltersProvider>
-      <div className="min-h-screen bg-canvas lg:pl-64">
+      <div className="min-h-screen bg-canvas lg:pl-60">
         <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
           Pular para o conteúdo
         </a>
-        <aside className="on-dark no-print flex flex-col bg-navy-900 text-white lg:fixed lg:inset-y-0 lg:left-0 lg:w-64">
+        <aside className="on-dark no-print flex flex-col bg-navy-900 text-white lg:fixed lg:inset-y-0 lg:left-0 lg:w-60">
           <div className="px-5 pt-5 pb-4">
             <NavLink to="/gestor" aria-label="Fretuno — painel">
               <Logo variant="negative" className="h-7" />
@@ -114,7 +114,7 @@ export function ManagerLayout() {
         </aside>
         <div className="flex min-h-screen flex-col">
           <DemoBanner />
-          <main id="conteudo" className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-8 sm:py-8">
+          <main id="conteudo" className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
             <Outlet />
           </main>
         </div>

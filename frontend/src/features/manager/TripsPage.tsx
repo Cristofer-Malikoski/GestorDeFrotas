@@ -75,8 +75,7 @@ export function TripsPage() {
                     <Th numeric>Km</Th>
                     <Th>Cliente / carga</Th>
                     <Th numeric>Frete</Th>
-                    <Th numeric>R$/km</Th>
-                    <Th>Estado</Th>
+                    <Th numeric>Frete/km</Th>
                     <Th>
                       <span className="sr-only">Ações</span>
                     </Th>
@@ -91,6 +90,7 @@ export function TripsPage() {
                           <span className="block font-medium">
                             {t.origin} → {t.destination}
                           </span>
+                          {t.status === 'em_andamento' && <TripStatusBadge status={t.status} />}
                           <span className="num block text-xs text-ink-3">
                             {formatDate(t.startDate)}
                             {t.endDate && t.endDate !== t.startDate ? ` a ${formatDate(t.endDate)}` : ''}
@@ -114,9 +114,6 @@ export function TripsPage() {
                         <Td numeric className="font-semibold">{t.freight ? formatMoney(t.freight.value) : '—'}</Td>
                         <Td numeric>
                           {t.freight && km && t.status === 'concluida' ? formatCostPerKm(t.freight.value / km) : '—'}
-                        </Td>
-                        <Td>
-                          <TripStatusBadge status={t.status} />
                         </Td>
                         <Td className="text-right whitespace-nowrap">
                           <Button size="sm" variant={t.freight ? 'ghost' : 'dark'} onClick={() => setFreightTrip(t)}>
