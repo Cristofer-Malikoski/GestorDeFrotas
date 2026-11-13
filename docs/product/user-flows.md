@@ -1,5 +1,16 @@
 # Jornadas e pontos de decisão
 
+> **Status.** As jornadas abaixo são **requisitos confirmados** do briefing. Os limites numéricos citados
+> (comprovante acima de R$ 100, preço ±15%, duplicidade ±1%) e a regra de reconhecimento de receita são
+> **hipóteses provisórias** — ver `calculation-rules.md`. Nada foi testado com usuários reais.
+
+## Entrada (demonstração)
+
+1. Landing page → botão **Acessar demonstração**.
+2. Escolha de perfil: **Entrar como Motorista** ou **Entrar como Gestor** — login demonstrativo, sem senha e
+   claramente rotulado; não é autenticação.
+3. "Trocar perfil" volta para a escolha. Com a API real (`VITE_DATA_SOURCE=api`), a mesma rota pede e-mail e senha.
+
 Convenções: **[D]** = ponto de decisão do usuário; **[S]** = o sistema decide/sugere;
 **[P]** = gera pendência para conferência (não bloqueia).
 
@@ -50,7 +61,8 @@ Sem dados financeiros sensíveis: o motorista não vê faturamento, frete, resul
 
 ### M5. Conferir e corrigir antes de confirmar
 - Todos os formulários mostram o resumo calculado (preço/litro, km desde o último abastecimento) **no mesmo formulário**, antes do botão Salvar. Não há tela de "confirmar" separada para tarefas simples.
-- Itens **Devolvidos** podem ser abertos, corrigidos e reenviados.
+- Itens **Devolvidos** podem ser abertos, corrigidos e reenviados; voltam para a conferência marcados como "Corrigido pelo motorista".
+- Com comprovante, a data e a hora do cupom substituem "agora" (o motorista não redigita).
 
 ### M6. Consultar últimos lançamentos
 - Lista cronológica com filtro por tipo (todos, abastecimentos, despesas) e estado.

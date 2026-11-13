@@ -38,6 +38,9 @@ Notas de licença:
 - Logotipos de fabricantes eventualmente visíveis nos caminhões **não** indicam parceria; não
   usamos as fotos para sugerir endosso de marca.
 
+Verificado em 13/11/2026 no build de produção servido como no GitHub Pages (`/GestorDeFrotas/`):
+todas as imagens, o favicon, os SVGs da marca e as fontes Inter/Manrope carregam sem erro.
+
 Tratamento aplicado: redimensionamento, conversão para **AVIF** (principal) e **WebP**
 (fallback) com `sharp`, remoção de metadados. Nenhuma alteração de conteúdo.
 Peso total: ~1,6 MB para 22 arquivos; a landing carrega no máximo 3 imagens por viewport,

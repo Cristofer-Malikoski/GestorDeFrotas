@@ -41,6 +41,17 @@ e devem ser revisadas quando a planilha puder ser comparada lado a lado.
 | Comprovante em papel separado da linha | Sem anexo | Documento anexado ao lançamento |
 | Não sabe se um valor foi conferido | Sem status | Estados: rascunho, pendente, aprovado |
 
+## 1.1 Como ler este documento
+
+| Tipo | O que é | Onde |
+|---|---|---|
+| **Requisito confirmado** | Pedido explícito do briefing do projeto: públicos (motorista e gestor), princípios inegociáveis, jornadas e módulos obrigatórios, demonstração estática no GitHub Pages com dados sintéticos, identidade Fretuno | Briefing; resumido em `user-flows.md` |
+| **Fato de pesquisa** | Informação de fonte pública citada (com o limite de cada fonte indicado) | Seções 2 e 3 |
+| **Decisão de design** | Escolha nossa a partir dos requisitos e da pesquisa; pode mudar com evidência | Seção 5 |
+| **Hipótese** | Suposição **não validada** com usuários reais | Seção 4 e parâmetros em `calculation-rules.md` |
+
+Nenhuma afirmação deste documento vem de entrevista ou teste com usuários: não houve.
+
 ## 2. Referências consultadas
 
 ### Produtos de frota, TMS e captura de despesas

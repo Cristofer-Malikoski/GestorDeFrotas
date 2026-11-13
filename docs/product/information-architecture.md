@@ -9,7 +9,8 @@
 ## Mapa de telas
 
 ```
-/entrar                         Escolha de perfil (login demonstrativo)
+/                               Landing page (CTA "Acessar demonstração")
+/entrar                         Escolha de perfil (login demonstrativo); com API real: e-mail e senha
 
 Motorista  /motorista
 ├── Início                      Veículo, viagem atual, ações rápidas, últimos lançamentos
@@ -30,6 +31,10 @@ Gestor  /gestor
 │   ├── /veiculos               Frota e comparação entre veículos
 │   └── /documentos             Comprovantes anexados
 ```
+
+No GitHub Pages cada rota acima tem um `index.html` próprio gerado no build (acesso direto e refresh
+respondem 200); caminhos desconhecidos caem em `404.html`, que mostra a página "rota não existe".
+A lista fica em `frontend/static-routes.ts` e um teste garante que ela acompanha as rotas do app.
 
 ## Layout
 
