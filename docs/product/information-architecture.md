@@ -21,7 +21,7 @@ Motorista  /motorista
 Gestor  /gestor
 ├── Acompanhar
 │   ├── Painel                  Indicadores, evolução mensal, atenção necessária
-│   ├── /conferencia            Fila de pendentes → detalhe com ações
+│   ├── /conferencia            "Conferir lançamentos": fila de pendentes → detalhe com ações
 │   └── /relatorios             Fechamento mensal | Resumo anual | Exportar
 ├── Operar
 │   ├── /viagens                Viagens e fretes (lista, registrar frete, nova viagem)
@@ -63,7 +63,7 @@ Motorista 1─1 Veículo (vínculo atual)
 | Despesa | Expense, custo variável |
 | Viagem | Trip, rota |
 | Frete | Receita de transporte |
-| Conferência | Auditoria, compliance |
+| Conferir lançamentos | Auditoria, compliance |
 | Comprovante | Documento fiscal, anexo (exceto em Documentos) |
 | Resultado | Lucro líquido, EBITDA |
 | Pendente de conferência | Flagged, em análise |
