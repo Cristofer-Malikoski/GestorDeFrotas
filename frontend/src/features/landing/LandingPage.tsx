@@ -77,7 +77,7 @@ export function LandingPage() {
             <a href="#gestor" className="hover:text-white">Gestor</a>
           </nav>
           <Button asChild variant="primary" size="md">
-            <Link to="/entrar">Explorar demonstração</Link>
+            <Link to="/entrar">Acessar demonstração</Link>
           </Button>
         </header>
 
@@ -96,12 +96,12 @@ export function LandingPage() {
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild variant="primary" size="lg">
-              <Link to="/entrar?perfil=gestor">
-                Ver como gestor <ArrowRight />
+              <Link to="/entrar">
+                Acessar demonstração <ArrowRight />
               </Link>
             </Button>
             <Button asChild size="lg" className="border-white/40 bg-white/10 text-white hover:bg-white/20">
-              <Link to="/entrar?perfil=motorista">Ver como motorista</Link>
+              <a href="#planilha">Ver como funciona</a>
             </Button>
           </div>
           <p className="mt-5 text-sm text-white/75">Demonstração com dados sintéticos. Não precisa de cadastro.</p>
@@ -261,7 +261,7 @@ export function LandingPage() {
             </ul>
             <Button asChild variant="dark" size="lg" className="mt-7 w-full">
               <Link to="/entrar">
-                Explorar demonstração <ArrowRight />
+                Acessar demonstração <ArrowRight />
               </Link>
             </Button>
           </div>
@@ -289,7 +289,7 @@ export function LandingPage() {
               <p className="mt-2 text-sm">Mais estrada. Menos papelada.</p>
             </div>
             <Button asChild variant="primary">
-              <Link to="/entrar">Explorar demonstração</Link>
+              <Link to="/entrar">Acessar demonstração</Link>
             </Button>
           </div>
           <div className="mt-10 border-t border-navy-700 pt-6 text-[13px] leading-relaxed">

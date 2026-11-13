@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import { renderApp } from '@/test/renderApp'
 import { buildFixtures } from '@/data/mock/fixtures'
@@ -6,6 +6,13 @@ import { todayISO } from '@/lib/dates'
 import { createMockRepository } from '@/data/mock/mockRepository'
 
 describe('Gestor', () => {
+  // A primeira tela do gestor carrega sob demanda o painel e o Recharts. Em máquina carregada, a
+  // transformação a frio desses módulos (não a renderização) chegou a ~40 s e estourava a espera de
+  // 6 s do primeiro teste. Pré-carregamos aqui, com prazo próprio; as asserções mantêm os prazos normais.
+  beforeAll(async () => {
+    await Promise.all([import('@/features/manager/DashboardPage'), import('@/features/manager/MonthlyChart')])
+  }, 120_000)
+
   it('painel mostra faturamento, despesas, resultado, custo por km e o que precisa de atenção', async () => {
     renderApp('/gestor', 'gestor')
     expect(await screen.findByText('Faturamento (fretes)')).toBeInTheDocument()
@@ -116,13 +123,13 @@ describe('Entrada e landing', () => {
   it('landing apresenta a marca, a proposta e o acesso à demonstração', async () => {
     renderApp('/')
     expect(await screen.findByRole('heading', { level: 1, name: /Mais estrada/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Explorar demonstração/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Acessar demonstração/ }).length).toBeGreaterThan(0)
     expect(screen.getByText(/Leitura de comprovante simulada/)).toBeInTheDocument()
   })
 
   it('escolhe o perfil e entra no espaço certo', async () => {
     const { user, router } = renderApp('/entrar')
-    await user.click(screen.getByRole('button', { name: /Entrar como gestor/ }))
+    await user.click(screen.getByRole('button', { name: /Entrar como Gestor/ }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/gestor'))
   })
 

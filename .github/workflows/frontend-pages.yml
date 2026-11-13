@@ -1,5 +1,9 @@
 # Front-end Fretuno: valida em PRs e publica a demonstração no GitHub Pages.
 # Pré-requisito (uma vez): Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Publicação:
+#   - automática a cada push em main que toque frontend/;
+#   - manual (Actions → este workflow → Run workflow), em qualquer branch permitida pelas
+#     regras do ambiente "github-pages" (Settings → Environments → github-pages).
 name: Front-end — CI e GitHub Pages
 
 on:
@@ -48,6 +52,14 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_DATA_SOURCE: mock
 
+      - name: Conferir saída para hospedagem estática
+        run: |
+          grep -q 'src="/${{ github.event.repository.name }}/assets/' dist/index.html
+          test -f dist/404.html
+          test -f dist/gestor/relatorios/index.html
+          test -f dist/motorista/abastecer/index.html
+          test -n "$(ls dist/images/*.avif)"
+
       - name: Empacotar para o Pages
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
@@ -56,7 +68,10 @@ jobs:
 
   deploy:
     name: Publicar no GitHub Pages
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     needs: build
     runs-on: ubuntu-latest
     permissions:

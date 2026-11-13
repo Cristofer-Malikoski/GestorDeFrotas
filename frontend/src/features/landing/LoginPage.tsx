@@ -30,31 +30,34 @@ export function LoginPage() {
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-12">
           {isDemo ? (
             <>
-            <h1 className="font-display text-3xl font-extrabold">Como você quer entrar?</h1>
+            <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700">
+              Demonstração · dados fictícios
+            </span>
+            <h1 className="mt-4 font-display text-3xl font-extrabold">Escolha um perfil</h1>
             <p className="mt-2 text-ink-2">
-              Escolha um perfil para explorar. Cada um vê só o que precisa — o motorista não vê valores de frete nem resultado.
+              Cada perfil vê só o que precisa: o motorista registra o dia a dia; o gestor acompanha a operação e o resultado.
             </p>
             <div className="mt-8 space-y-3">
-              <ProfileButton
-                highlighted={suggested === 'gestor'}
-                icon={<BarChart3 />}
-                title="Gestor"
-                who={DEMO_USERS.gestor.name}
-                detail="Painel, conferência de lançamentos, viagens, fretes e fechamento do mês."
-                onClick={() => enter('gestor')}
-              />
               <ProfileButton
                 highlighted={suggested === 'motorista'}
                 icon={<Truck />}
                 title="Motorista"
-                who={`${DEMO_USERS.motorista.name} · caminhão DMO1A23`}
-                detail="Registrar abastecimento, despesa e viagem; acompanhar os próprios lançamentos."
+                who={`${DEMO_USERS.motorista.name} · caminhão DMO1A23 (fictício)`}
+                detail="Registrar abastecimento, viagem e despesa; acompanhar o histórico."
                 onClick={() => enter('motorista')}
+              />
+              <ProfileButton
+                highlighted={suggested === 'gestor'}
+                icon={<BarChart3 />}
+                title="Gestor"
+                who={`${DEMO_USERS.gestor.name} (fictício)`}
+                detail="Ver a operação, indicadores, conferência de lançamentos e relatórios."
+                onClick={() => enter('gestor')}
               />
             </div>
             <p className="mt-8 rounded-lg bg-canvas px-4 py-3 text-sm text-ink-3">
-              <strong className="font-semibold text-ink-2">Entrada demonstrativa, sem senha.</strong> Com a API real (VITE_DATA_SOURCE=api) esta tela pede
-              e-mail e senha.
+              <strong className="font-semibold text-ink-2">Login demonstrativo, sem senha e sem segurança real.</strong> Serve só para
+              escolher o ponto de vista. Na versão com servidor, esta tela pede e-mail e senha.
             </p>
             </>
           ) : (
@@ -76,7 +79,7 @@ export function LoginPage() {
           position="55% 50%"
           priority
         />
-        <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(0deg,rgb(10_20_29/0.85),transparent)] p-10 text-white">
+        <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(0deg,rgb(10_20_29/0.92)_0%,rgb(10_20_29/0.75)_55%,transparent)] p-10 pt-24 text-white">
           <p className="font-display text-3xl font-extrabold">Sua operação em ordem.</p>
           <p className="font-display text-3xl font-extrabold text-go-400">Sua frota em movimento.</p>
         </div>
@@ -113,7 +116,7 @@ function ProfileButton({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-lg font-bold">Entrar como {title.toLowerCase()}</span>
+        <span className="block font-display text-lg font-bold">Entrar como {title}</span>
         <span className="block text-sm font-medium text-ink-2">{who}</span>
         <span className="mt-0.5 block text-sm text-ink-3">{detail}</span>
       </span>
