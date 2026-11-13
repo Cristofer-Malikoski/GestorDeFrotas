@@ -41,12 +41,20 @@ const rows = [
 const onWindows = process.platform === 'win32'
 let warnings = 0
 const width = Math.max(...rows.map(([k]) => k.length))
+let shared = 0
 for (const [label, value] of rows) {
   const onC = onWindows && /^c:/i.test(value)
+  // Caminhos dentro de outro projeto (ex.: F:\monorepo) nao sao isolados.
+  const other = onWindows && /^f:[\\/]monorepo/i.test(value)
   if (onC) warnings++
-  console.log(`${onC ? 'C:' : '  '} ${label.padEnd(width)}  ${value}`)
+  if (other) shared++
+  console.log(`${onC ? 'C:' : other ? 'M!' : '  '} ${label.padEnd(width)}  ${value}`)
 }
 console.log('')
 if (!onWindows) console.log('Fora do Windows: verificação de disco não se aplica (ex.: CI do GitHub).')
 else if (warnings) console.log(`${warnings} caminho(s) ainda no C:. Rode ". .\\scripts\\dev-env.ps1" e confira de novo.`)
 else console.log('Tudo no F: (ou relativo ao projeto).')
+if (shared) {
+  console.log(`${shared} caminho(s) marcados com M! ficam dentro de F:\\monorepo (outro projeto).`)
+  console.log('Use ". .\\scripts\\dev-env.ps1" para isolar caches e temporarios do Fretuno.')
+}

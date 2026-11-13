@@ -15,6 +15,21 @@ Contexto: o disco C: da máquina de desenvolvimento tem pouco espaço livre. O p
 
 O front-end não usa Python; o cache do pip aparece aqui porque a mesma máquina roda o backend.
 
+## Isolamento em relação a outros projetos da máquina
+
+Nesta máquina, as variáveis **de usuário** do Windows (TEMP, TMP, cache do npm/Yarn/corepack) e o Node do
+PATH apontam para pastas de **outro projeto** no mesmo disco. Consequência observada: ferramentas que
+procuram um `package.json` subindo diretórios a partir da pasta temporária podem agir sobre aquele projeto.
+
+Regras adotadas para o Fretuno:
+
+- caches e temporários do Fretuno ficam em `F:\DevCache\...` (nunca dentro de outro projeto);
+- ferramentas auxiliares (ex.: automação de navegador para capturas) ficam em uma pasta própria em
+  `F:\DevCache` **com `package.json` próprio**, para o npm nunca subir para um diretório pai;
+- `npm run storage:check` marca com `M!` qualquer caminho que ainda esteja dentro de outro projeto;
+- mudar as variáveis de usuário do Windows é decisão do dono da máquina (afeta todos os programas) e não é
+  feito por estes scripts.
+
 ## Script opcional: `frontend/scripts/dev-env.ps1`
 
 ```powershell
@@ -23,10 +38,11 @@ cd F:\GestorDeFrotas\.worktrees\frontend\frontend
 npm run storage:check
 ```
 
-- Define **só para a sessão do terminal**: `npm_config_cache`, `TEMP`/`TMP`, `PIP_CACHE_DIR`,
+- Define **só para a sessão do terminal**: `npm_config_cache`, `npm_config_prefix` (instalações globais), `TEMP`/`TMP`, `PIP_CACHE_DIR`,
   `PYTHONPYCACHEPREFIX`, `PYTEST_ADDOPTS` (acrescenta `cache_dir`) e `FRETUNO_VITE_CACHE`, todos sob `F:\DevCache`.
 - Raiz alternativa: `. .\scripts\dev-env.ps1 -CacheRoot 'F:\OutroLugar'` ou `$env:FRETUNO_CACHE_ROOT`.
-- Sem o disco indicado, mostra um aviso e **não altera nada**.
+- Sem o disco indicado, mostra um aviso e **não altera nada**; recusa raiz de cache dentro de outro projeto.
+- Avisa quando o Node em uso pertence às ferramentas de outro projeto (funciona, mas não é isolado).
 - Não muda variáveis persistentes do Windows, não move e não apaga arquivos.
 
 `npm run storage:check` lista onde cada ferramenta vai gravar e marca com `C:` o que ainda cai no C:.
