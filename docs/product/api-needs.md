@@ -1,6 +1,15 @@
 # Necessidades de API do front-end
 
-> **Status:** `contracts/openapi.yaml` ainda não existia quando o front-end foi construído.
+> **Atualização (13/11/2026):** o Codex publicou `contracts/openapi.yaml` na branch
+> `codex/backend-foundation` (rotas `/api/v1/...`: `auth`, `vehicles`, `drivers`, `trips` (+ `freight`,
+> `recognize-freight`, `review`), `fuelings`, `expenses`, `revenues`, `categories`,
+> `financial-policies`, `pending-entries` (+ `confirm`/`reject`), `documents` (+ `content`/`extract`),
+> `analytics/dashboard`, `vehicles/{id}/cost-profile`, `simulations/freight`). O adapter HTTP do
+> front-end **ainda usa os caminhos provisórios** e precisa ser alinhado a esse contrato
+> (mapeamento DTO → `domain/types.ts`); o modo demonstração não é afetado. A lista abaixo
+> segue útil para conferir cobertura.
+>
+> **Status original:** `contracts/openapi.yaml` ainda não existia quando o front-end foi construído.
 > Este documento lista o que a interface precisa — **não** é uma proposta de contrato
 > definitivo. Nomes de rotas e campos abaixo são ilustrativos; o contrato publicado pelo
 > backend prevalece. Quando ele existir, o ajuste fica concentrado em
