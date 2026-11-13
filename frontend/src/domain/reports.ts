@@ -43,6 +43,37 @@ const inScope = (vehicleId: string | undefined) => (x: { vehicleId: string }) =>
 export const tripRevenueMonth = (t: Trip) => (t.endDate ?? t.startDate).slice(0, 7)
 export const tripKm = (t: Trip) => Math.max(0, (t.endKm ?? t.lastKm ?? t.startKm) - t.startKm)
 
+/**
+ * Consumo pelo hodômetro, a única forma comparável entre telas:
+ * para cada abastecimento com km, distância desde o abastecimento anterior com km
+ * do mesmo veículo ÷ litros deste abastecimento. Agregado = Σ km ÷ Σ litros
+ * (razão das somas, nunca média de razões). Arla e lançamentos devolvidos ficam de fora.
+ */
+export function fuelConsumption(fuel: FuelEntry[], opts: { vehicleId?: string; month?: string } = {}) {
+  const perEntry = new Map<string, number>()
+  let km = 0
+  let liters = 0
+  const byVehicle = new Map<string, FuelEntry[]>()
+  for (const f of fuel) {
+    if (f.fuelType === 'arla32' || !countsInTotals(f) || f.odometerKm == null) continue
+    if (opts.vehicleId && f.vehicleId !== opts.vehicleId) continue
+    byVehicle.set(f.vehicleId, [...(byVehicle.get(f.vehicleId) ?? []), f])
+  }
+  for (const list of byVehicle.values()) {
+    list.sort((a, b) => a.date.localeCompare(b.date))
+    for (let i = 1; i < list.length; i++) {
+      const delta = list[i].odometerKm! - list[i - 1].odometerKm!
+      if (delta <= 0 || list[i].liters <= 0) continue
+      perEntry.set(list[i].id, delta / list[i].liters)
+      if (!opts.month || list[i].date.startsWith(opts.month)) {
+        km += delta
+        liters += list[i].liters
+      }
+    }
+  }
+  return { perEntry, km, liters, kmPerLiter: liters > 0 ? km / liters : null }
+}
+
 export function summarizeMonth(data: ReportData, month: string, vehicleId?: string): MonthSummary {
   const scope = inScope(vehicleId)
   const trips = data.trips.filter(scope)
@@ -83,7 +114,7 @@ export function summarizeMonth(data: ReportData, month: string, vehicleId?: stri
     result: revenue - totalCosts,
     km,
     liters,
-    kmPerLiter: liters > 0 && km > 0 ? km / liters : null,
+    kmPerLiter: fuelConsumption(data.fuel, { vehicleId, month }).kmPerLiter,
     costPerKm: km > 0 ? totalCosts / km : null,
     trips: monthTrips.length,
     pendingCount,
@@ -119,7 +150,12 @@ export function totals(summaries: MonthSummary[]) {
     result: revenue - totalCosts,
     km,
     liters,
-    kmPerLiter: liters > 0 ? km / liters : null,
+    // Consumo do período: litros de cada mês × km/L do mês ÷ litros totais (ponderado pelos litros).
+    kmPerLiter: (() => {
+      const valid = summaries.filter((m) => m.kmPerLiter != null && m.liters > 0)
+      const l = valid.reduce((s, m) => s + m.liters, 0)
+      return l > 0 ? valid.reduce((s, m) => s + m.kmPerLiter! * m.liters, 0) / l : null
+    })(),
     costPerKm: km > 0 ? totalCosts / km : null,
   }
 }

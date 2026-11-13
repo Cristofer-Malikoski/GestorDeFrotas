@@ -8,26 +8,11 @@ import { Sheet } from '@/components/ui/sheet'
 import { Table, TableWrap, Td, Th, Tr } from '@/components/ui/table'
 import { useFuel, useVehicles } from '@/data/queries'
 import { countsInTotals } from '@/domain/rules'
-import type { FuelEntry } from '@/domain/types'
+import { fuelConsumption } from '@/domain/reports'
 import { formatDateTime, formatKm, formatKmPerLiter, formatLiters, formatMoney, formatMonth, formatPricePerLiter } from '@/lib/format'
 import { FuelForm } from '@/features/shared/FuelForm'
 import { StatusBadge } from '@/features/shared/status'
 import { MonthFilter, VehicleFilter, useManagerFilters } from './filters'
-
-/** km/L de cada abastecimento: km desde o abastecimento anterior com km ÷ litros deste. */
-function consumptionByEntry(entries: FuelEntry[]) {
-  const map = new Map<string, number>()
-  const byVehicle = new Map<string, FuelEntry[]>()
-  for (const e of entries) byVehicle.set(e.vehicleId, [...(byVehicle.get(e.vehicleId) ?? []), e])
-  for (const list of byVehicle.values()) {
-    const sorted = list.filter((e) => e.odometerKm != null && countsInTotals(e) && e.fuelType !== 'arla32').sort((a, b) => a.date.localeCompare(b.date))
-    for (let i = 1; i < sorted.length; i++) {
-      const km = sorted[i].odometerKm! - sorted[i - 1].odometerKm!
-      if (km > 0 && sorted[i].liters > 0) map.set(sorted[i].id, km / sorted[i].liters)
-    }
-  }
-  return map
-}
 
 export function FuelPage() {
   const { vehicleId, month } = useManagerFilters()
@@ -36,13 +21,13 @@ export function FuelPage() {
   const [creating, setCreating] = useState(false)
   const plate = (id: string) => vehicles.data?.find((v) => v.id === id)?.plate ?? '—'
 
-  const consumption = useMemo(() => consumptionByEntry(all.data ?? []), [all.data])
+  const stats = useMemo(() => fuelConsumption(all.data ?? [], { vehicleId, month }), [all.data, vehicleId, month])
+  const consumption = stats.perEntry
   const list = (all.data ?? []).filter((f) => (!vehicleId || f.vehicleId === vehicleId) && f.date.startsWith(month))
   const counted = list.filter(countsInTotals)
   const liters = counted.reduce((s, f) => s + f.liters, 0)
   const total = counted.reduce((s, f) => s + f.total, 0)
-  const kml = counted.map((f) => consumption.get(f.id)).filter((v): v is number => v != null)
-  const avgKml = kml.length ? kml.reduce((a, b) => a + b, 0) / kml.length : null
+  const avgKml = stats.kmPerLiter
 
   return (
     <div>
@@ -65,7 +50,7 @@ export function FuelPage() {
         <Stat label="Gasto com combustível" value={formatMoney(total)} />
         <Stat label="Litros" value={formatLiters(liters)} />
         <Stat label="Preço médio" value={liters ? formatPricePerLiter(total / liters) : '—'} />
-        <Stat label="Consumo médio" value={avgKml ? formatKmPerLiter(avgKml) : '—'} />
+        <Stat label="Consumo médio" value={avgKml ? formatKmPerLiter(avgKml) : '—'} sub="Pelo hodômetro: km ÷ litros" />
       </div>
       <Card>
         <QueryState query={all}>

@@ -57,8 +57,14 @@ export function lastKnownKm(
   }
   for (const t of trips) {
     if (t.vehicleId !== vehicle?.id) continue
-    if (beforeDate && t.startDate >= beforeDate) continue
-    values.push(t.endKm ?? t.lastKm ?? t.startKm)
+    if (!beforeDate) {
+      values.push(t.endKm ?? t.lastKm ?? t.startKm)
+      continue
+    }
+    // Para uma data no passado só vale km comprovadamente anterior a ela: o de saída,
+    // ou o de chegada se a viagem terminou antes. O km parcial (lastKm) não tem data.
+    if (t.startDate.slice(0, 10) < beforeDate.slice(0, 10)) values.push(t.startKm)
+    if (t.endKm != null && t.endDate && t.endDate.slice(0, 10) < beforeDate.slice(0, 10)) values.push(t.endKm)
   }
   if (!beforeDate && vehicle) values.push(vehicle.odometerKm)
   return values.length ? Math.max(...values) : vehicle?.odometerKm
@@ -122,6 +128,16 @@ export function expenseIssues(input: ExpenseInput, category: ExpenseCategory | u
     })
   }
   return issues
+}
+
+/** Pendência de possível duplicidade — mesma mensagem no mock, nas fixtures e na conferência. */
+export function duplicateIssue(match: Entry, confirmedByUser: boolean): Issue {
+  const what = match.kind === 'abastecimento' ? 'outro abastecimento' : 'outra despesa da mesma categoria'
+  return {
+    code: 'possivel_duplicado',
+    message: `Mesmo valor, mesmo veículo e mesmo dia de ${what}.${confirmedByUser ? ' Quem lançou confirmou que é outro lançamento.' : ''}`,
+    relatedEntryId: match.id,
+  }
 }
 
 export function statusFromIssues(issues: Issue[]): EntryStatus {

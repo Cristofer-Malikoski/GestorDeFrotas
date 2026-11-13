@@ -25,6 +25,7 @@ import type {
   Trip,
 } from '@/domain/types'
 import {
+  duplicateIssue,
   expenseIssues,
   findDuplicates,
   fuelIssues,
@@ -198,11 +199,7 @@ export function createMockRepository(options: MockOptions = {}): FleetRepository
         recentPrice: recentPricePerLiter(input.vehicleId, state.fuel),
       })
       if (matches.length) {
-        issues.unshift({
-          code: 'possivel_duplicado',
-          message: 'Mesmo valor, mesmo veículo e mesmo dia de outro abastecimento. O motorista confirmou que é outro lançamento.',
-          relatedEntryId: matches[0].id,
-        })
+        issues.unshift(duplicateIssue(matches[0], true))
       }
       const entry: FuelEntry = {
         id: nextId('abs'),
@@ -240,11 +237,7 @@ export function createMockRepository(options: MockOptions = {}): FleetRepository
       const category = state.categories.find((c) => c.id === input.categoryId)
       const issues = expenseIssues(input, category)
       if (matches.length) {
-        issues.unshift({
-          code: 'possivel_duplicado',
-          message: 'Mesma categoria, valor e dia de outra despesa. Foi confirmado que é outro lançamento.',
-          relatedEntryId: matches[0].id,
-        })
+        issues.unshift(duplicateIssue(matches[0], true))
       }
       const entry: ExpenseEntry = {
         id: nextId('desp'),

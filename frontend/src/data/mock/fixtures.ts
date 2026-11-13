@@ -20,6 +20,19 @@ import type {
 } from '@/domain/types'
 import { addDays, daysInMonth, lastMonths } from '@/lib/dates'
 import { formatDecimal, formatMoney } from '@/lib/format'
+import {
+  duplicateIssue,
+  expenseIssues,
+  findDuplicates,
+  fuelIssues,
+  lastKnownKm,
+  recentPricePerLiter,
+  statusFromIssues,
+} from '@/domain/rules'
+import { tripRevenueMonth } from '@/domain/reports'
+
+/** Alíquota ESTIMADA (hipótese) do imposto sobre faturamento; o regime real do cliente é desconhecido. */
+export const TAX_RATE = 0.062
 
 export interface FleetState {
   vehicles: Vehicle[]
@@ -196,7 +209,6 @@ export function buildFixtures(today: string): FleetState {
       const approved = !isCurrent
       const status = approved ? ('aprovado' as const) : ('registrado' as const)
       const reviewedAt = approved ? `${month}-${pad2(Math.min(28, lastDay))}T18:00` : undefined
-      let monthRevenue = 0
 
       let day = 1
       let city = HUB
@@ -242,7 +254,6 @@ export function buildFixtures(today: string): FleetState {
           value,
           cargo: outbound ? route.cargo : pick(ROUTES).cargo,
         }
-        monthRevenue += inProgress ? 0 : value
         trips.push(trip)
 
         // Abastecimentos ao longo da viagem
@@ -352,23 +363,6 @@ export function buildFixtures(today: string): FleetState {
           createdBy: 'gestor',
         })
       }
-      if (!isCurrent) {
-        expenses.push({
-          id: id('desp'),
-          kind: 'despesa',
-          vehicleId: vehicle.id,
-          date: at(`${month}-28`, 11),
-          categoryId: 'impostos_faturamento',
-          description: 'Simples Nacional (estimativa sobre fretes do mês)',
-          value: round2(monthRevenue * 0.062),
-          status,
-          reviewedAt,
-          issues: [],
-          source: 'manual',
-          createdBy: 'gestor',
-        })
-      }
-
       // Manutenção
       const maintenance: [number, string, string, number][] = []
       if (mi % 3 === 1) maintenance.push([12, 'oficina', 'Troca de óleo, filtros e lubrificação', isMain ? 1460 : 1390])
@@ -402,123 +396,125 @@ export function buildFixtures(today: string): FleetState {
     vehicle.odometerKm = odometer
   }
 
-  /* ---------- Casos especiais do mês corrente ---------- */
+  // 7) Viagem concluída sem frete registrado (segundo veículo) — antes do cálculo do imposto.
+  const tripWithoutFreight = trips.filter((t) => t.vehicleId === vehicles[1].id && t.status === 'concluida').at(-1)
+  if (tripWithoutFreight) delete tripWithoutFreight.freight
+
+  /* ---------- Imposto sobre faturamento (meses fechados) ----------
+   * Calculado depois de todos os ajustes, a partir dos fretes reconhecidos no mês
+   * (mesma regra do relatório: mês de conclusão da viagem).
+   */
+  for (const vehicle of vehicles) {
+    for (const month of months) {
+      if (month === currentMonth) continue
+      const revenue = trips
+        .filter((t) => t.vehicleId === vehicle.id && t.freight && tripRevenueMonth(t) === month)
+        .reduce((sum, t) => sum + t.freight!.value, 0)
+      if (!revenue) continue
+      expenses.push({
+        id: id('desp'),
+        kind: 'despesa',
+        vehicleId: vehicle.id,
+        date: at(`${month}-28`, 11),
+        categoryId: 'impostos_faturamento',
+        description: `Simples Nacional — estimativa de ${formatDecimal(TAX_RATE * 100, 1)}% sobre os fretes do mês`,
+        value: round2(revenue * TAX_RATE),
+        status: 'aprovado',
+        reviewedAt: `${month}-28T18:00`,
+        issues: [],
+        source: 'manual',
+        createdBy: 'gestor',
+      })
+    }
+  }
+
+  /* ---------- Casos especiais ----------
+   * Nenhum valor é digitado à mão: cada caso parte de um abastecimento gerado acima
+   * (litros = km rodados ÷ consumo; valor = litros × preço) e as pendências são
+   * calculadas pelas MESMAS regras da aplicação (domain/rules.ts).
+   */
   const v1 = vehicles[0]
   const v2 = vehicles[1]
-  const activeTrip = trips.find((t) => t.vehicleId === v1.id && t.status === 'em_andamento')
-  const recentTripId = activeTrip?.id
-  const d = (offset: number) => addDays(today, -offset)
+  const asc = <T extends { date: string }>(a: T, b: T) => a.date.localeCompare(b.date)
+  const removeDoc = (e: FuelEntry) => {
+    const di = documents.findIndex((x) => x.id === e.documentId)
+    if (di >= 0) documents.splice(di, 1)
+    e.documentId = undefined
+  }
+  const [fIncomplete, fDuplicated, fUncertain] = fuel.filter((f) => f.vehicleId === v1.id).sort(asc).slice(-3)
+  const [fAtypical] = fuel.filter((f) => f.vehicleId === v2.id).sort(asc).slice(-1)
 
-  // 1) Possível duplicidade: dois lançamentos iguais no mesmo dia.
-  const dupOriginal: FuelEntry = {
+  // 1) Lançamento incompleto: o motorista não informou o km nem anexou comprovante.
+  removeDoc(fIncomplete)
+  fIncomplete.odometerKm = undefined
+  fIncomplete.source = 'manual'
+
+  // 2) Duplicidade: o mesmo abastecimento registrado de novo minutos depois, sem comprovante.
+  const [dh, dm] = fDuplicated.date.slice(11, 16).split(':').map(Number)
+  const dupCopy: FuelEntry = {
+    ...fDuplicated,
     id: id('abs'),
-    kind: 'abastecimento',
+    date: at(fDuplicated.date, Math.min(23, dh + (dm >= 37 ? 1 : 0)), (dm + 23) % 60),
+    documentId: undefined,
+    source: 'manual',
+  }
+  fuel.push(dupCopy)
+
+  // 3) Comprovante com leitura incerta: os litros saíram borrados no cupom.
+  const ud = documents.find((x) => x.id === fUncertain.documentId)!
+  const litersText = formatDecimal(fUncertain.liters, 2)
+  ud.synthetic!.lines[0].value = `${litersText.slice(0, 2)}?${litersText.slice(3)} L × ${formatDecimal(fUncertain.total / fUncertain.liters, 3)}`
+  ud.extraction = {
+    simulated: true,
+    fields: [
+      { key: 'station', label: 'Posto', value: fUncertain.station, confidence: 'alta' },
+      { key: 'liters', label: 'Litros', value: litersText, confidence: 'baixa' },
+      { key: 'total', label: 'Valor total', value: formatDecimal(fUncertain.total, 2), confidence: 'alta' },
+      { key: 'date', label: 'Data', value: fUncertain.date.slice(0, 10), confidence: 'alta' },
+    ],
+  }
+
+  // 4) Erro de digitação: informou 40% dos litros reais (o valor pago está certo).
+  //    A regra de preço por litro fora do padrão é quem detecta.
+  fAtypical.liters = round2(fAtypical.liters * 0.4)
+
+  // Reavalia os casos com as regras da aplicação, como se tivessem sido lançados agora.
+  const special = new Set([fIncomplete.id, fDuplicated.id, fUncertain.id, fAtypical.id, dupCopy.id])
+  for (const e of fuel.filter((f) => special.has(f.id)).sort(asc)) {
+    const vehicle = vehicles.find((v) => v.id === e.vehicleId)
+    const earlier = fuel.filter((f) => f.vehicleId === e.vehicleId && f.id !== e.id && f.date <= e.date)
+    const issues = fuelIssues(
+      { ...e, hadUncertainFields: e.id === fUncertain.id },
+      { lastKm: lastKnownKm(vehicle, earlier, trips, e.date), recentPrice: recentPricePerLiter(e.vehicleId, earlier) },
+    )
+    const dup = findDuplicates({ kind: 'abastecimento', vehicleId: e.vehicleId, date: e.date, value: e.total }, earlier)
+    if (dup.length) issues.unshift(duplicateIssue(dup[0], false))
+    e.issues = issues
+    // Sem pendência mantém o estado gerado (registrado/aprovado); com pendência vai para conferência.
+    if (issues.length) {
+      e.status = statusFromIssues(issues)
+      e.reviewedAt = undefined
+    }
+  }
+
+  // 5) Despesa de oficina sem nota e 6) despesa que o gestor devolveu (registros adicionais).
+  const activeTrip = trips.find((t) => t.vehicleId === v1.id && t.status === 'em_andamento')
+  const d = (offset: number) => addDays(today, -offset)
+  const workshop: ExpenseEntry = {
+    id: id('desp'),
+    kind: 'despesa',
     vehicleId: v1.id,
     driverId: 'mot-1',
-    tripId: recentTripId,
-    date: at(d(3), 7, 42),
-    station: 'Posto Pinheiral',
-    liters: 301.2,
-    total: 1897.56,
-    odometerKm: v1.odometerKm - 610,
-    fuelType: 'diesel_s10',
+    tripId: activeTrip?.id,
+    date: at(d(2), 11, 15),
+    categoryId: 'oficina',
+    description: 'Conserto de mangueira do ar e troca de lâmpada',
+    value: 380,
     status: 'registrado',
     issues: [],
     source: 'manual',
     createdBy: 'motorista',
   }
-  dupOriginal.documentId = fuelDoc(dupOriginal)
-  const dupCopy: FuelEntry = {
-    ...dupOriginal,
-    id: id('abs'),
-    date: at(d(3), 8, 5),
-    documentId: undefined,
-    status: 'pendente',
-    issues: [
-      {
-        code: 'possivel_duplicado',
-        message: 'Mesmo valor, mesmo veículo e mesmo dia de outro abastecimento.',
-        relatedEntryId: dupOriginal.id,
-      },
-      { code: 'sem_comprovante', message: 'Abastecimento sem comprovante anexado.' },
-    ],
-  }
-
-  // 2) Comprovante com leitura incerta (litros borrados no cupom).
-  const uncertain: FuelEntry = {
-    id: id('abs'),
-    kind: 'abastecimento',
-    vehicleId: v1.id,
-    driverId: 'mot-1',
-    tripId: recentTripId,
-    date: at(d(1), 18, 20),
-    station: 'Auto Posto Trevo Norte',
-    liters: 318.4,
-    total: 1993.18,
-    odometerKm: v1.odometerKm - 40,
-    fuelType: 'diesel_s10',
-    status: 'pendente',
-    issues: [
-      {
-        code: 'leitura_incerta',
-        message: 'Comprovante com campos de leitura incerta. Conferir valores com o documento.',
-      },
-    ],
-    source: 'comprovante',
-    createdBy: 'motorista',
-  }
-  const uncertainDoc = fuelDoc(uncertain)
-  uncertain.documentId = uncertainDoc
-  const ud = documents.find((x) => x.id === uncertainDoc)!
-  ud.synthetic!.lines[0].value = '31?,4 L × 6,26?'
-  ud.extraction = {
-    simulated: true,
-    fields: [
-      { key: 'station', label: 'Posto', value: 'Auto Posto Trevo Norte', confidence: 'alta' },
-      { key: 'liters', label: 'Litros', value: '318,4', confidence: 'baixa' },
-      { key: 'total', label: 'Valor total', value: '1.993,18', confidence: 'alta' },
-      { key: 'date', label: 'Data', value: d(1), confidence: 'alta' },
-    ],
-  }
-
-  // 3) Lançamento incompleto: sem km e sem comprovante.
-  const incomplete: FuelEntry = {
-    id: id('abs'),
-    kind: 'abastecimento',
-    vehicleId: v1.id,
-    driverId: 'mot-1',
-    date: at(d(6), 21, 5),
-    station: 'Posto Estrela da Serra',
-    liters: 287.0,
-    total: 1786.5,
-    fuelType: 'diesel_s10',
-    status: 'pendente',
-    issues: [
-      { code: 'km_ausente', message: 'O km do hodômetro não foi informado.' },
-      { code: 'sem_comprovante', message: 'Abastecimento sem comprovante anexado.' },
-    ],
-    source: 'manual',
-    createdBy: 'motorista',
-  }
-
-  // 4) Despesa de oficina sem nota.
-  const workshopNoReceipt: ExpenseEntry = {
-    id: id('desp'),
-    kind: 'despesa',
-    vehicleId: v1.id,
-    driverId: 'mot-1',
-    tripId: recentTripId,
-    date: at(d(2), 11, 15),
-    categoryId: 'oficina',
-    description: 'Conserto de mangueira do ar e troca de lâmpada',
-    value: 380,
-    status: 'pendente',
-    issues: [{ code: 'sem_comprovante', message: 'Despesa acima de R$ 100 sem comprovante anexado.' }],
-    source: 'manual',
-    createdBy: 'motorista',
-  }
-
-  // 5) Lançamento devolvido ao motorista.
   const returned: ExpenseEntry = {
     id: id('desp'),
     kind: 'despesa',
@@ -528,52 +524,20 @@ export function buildFixtures(today: string): FleetState {
     categoryId: 'outros',
     description: 'Lona',
     value: 240,
-    status: 'devolvido',
-    returnReason: 'Anexe o recibo e diga se a lona foi comprada ou é reparo da existente.',
-    reviewedAt: at(d(7), 9, 0),
-    issues: [{ code: 'sem_comprovante', message: 'Despesa acima de R$ 100 sem comprovante anexado.' }],
+    status: 'registrado',
+    issues: [],
     source: 'manual',
     createdBy: 'motorista',
   }
-
-  // 6) Preço atípico no segundo veículo.
-  const atypical: FuelEntry = {
-    id: id('abs'),
-    kind: 'abastecimento',
-    vehicleId: v2.id,
-    driverId: 'mot-2',
-    date: at(d(2), 13, 30),
-    station: 'Posto Campo Aberto',
-    liters: 120,
-    total: 894,
-    odometerKm: v2.odometerKm,
-    fuelType: 'diesel_s10',
-    status: 'pendente',
-    issues: [
-      {
-        code: 'preco_atipico',
-        message: 'Preço de R$ 7,45/L difere da média recente (R$ 6,21/L).',
-      },
-    ],
-    source: 'comprovante',
-    createdBy: 'motorista',
+  for (const e of [workshop, returned]) {
+    e.issues = expenseIssues(e, CATEGORIES.find((c) => c.id === e.categoryId))
+    e.status = statusFromIssues(e.issues)
   }
-  atypical.documentId = fuelDoc(atypical)
-
-  // Os casos especiais substituem os abastecimentos gerados nos últimos dias do caminhão principal.
-  for (let i = fuel.length - 1; i >= 0; i--) {
-    if (fuel[i].vehicleId === v1.id && fuel[i].date.slice(0, 10) >= d(7)) {
-      const di = documents.findIndex((x) => x.id === fuel[i].documentId)
-      if (di >= 0) documents.splice(di, 1)
-      fuel.splice(i, 1)
-    }
-  }
-  fuel.push(dupOriginal, dupCopy, uncertain, incomplete, atypical)
-  expenses.push(workshopNoReceipt, returned)
-
-  // 7) Viagem concluída sem frete registrado (segundo veículo).
-  const lastV2 = trips.filter((t) => t.vehicleId === v2.id).at(-1)
-  if (lastV2) delete lastV2.freight
+  // Decisão do gestor (não é regra automática): pediu correção.
+  returned.status = 'devolvido'
+  returned.returnReason = 'Anexe o recibo e diga se a lona foi comprada ou é reparo da existente.'
+  returned.reviewedAt = at(d(7), 9, 0)
+  expenses.push(workshop, returned)
 
   const byDate = <T extends { date: string }>(a: T, b: T) => b.date.localeCompare(a.date)
   fuel.sort(byDate)
