@@ -1,6 +1,6 @@
 # Front-end Fretuno: valida em PRs e publica a demonstração no GitHub Pages.
 # Pré-requisito (uma vez): Settings → Pages → Build and deployment → Source: "GitHub Actions".
-# Publicação:
+# Publicação (o job deploy só roda nestes casos):
 #   - automática a cada push em main que toque frontend/;
 #   - manual (Actions → este workflow → Run workflow), em qualquer branch permitida pelas
 #     regras do ambiente "github-pages" (Settings → Environments → github-pages).
